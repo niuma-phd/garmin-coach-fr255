@@ -1,28 +1,41 @@
-# Coach Face — 佳明 FR255 健身教练表盘 + 客制化工具包
+# Coach Face & Checkin — 佳明 FR255 教练表盘 + 腕上打卡 App
 
-一套**开源**的 Garmin Forerunner 255 客制化方案：一个把健康/教练数据展示在手腕上的
-**Connect IQ 表盘**，外加一个用云端账号**把结构化训练推到表上**的脚本工具包。
-为 MIP 屏（260×260 / 64 色）量身设计，**USB 侧载即用，不依赖商店、与区服无关**。
+一套**开源**的 Garmin Forerunner 255 客制化方案,三件套互补:
 
-> 设备：Forerunner 255（`fr255`，普通版 46mm）· 平台：Connect IQ 4 / System 7 / API 5.2 · 许可：MIT
+- **教练表盘 `watchface/`**(Coach Face)— 极简「禅意」中文表盘,主角是一个超大的绿色**坚持天数**;
+- **打卡 App `watchapp/`**(Coach Checkin)— 腕上一键打卡:忍住/抽了/起床/跑步/喝水…,离线排队、联网回传;
+- **客制化工具包 `coach-tools/`** — 用云端账号把结构化训练(Zone-2 心率跑)推到表上。
+
+为 MIP 屏(260×260 / 64 色 / 常显)量身设计,**USB 侧载即用,不依赖商店、与区服无关**。
+
+> 设备:Forerunner 255 家族(`fr255` / `fr255m` / `fr255s` / `fr255sm`,默认在普通版 `fr255` 上构建测试)
+> 平台:Connect IQ 4 / System 7(manifest `minApiLevel 3.1.0`) · 语言:简体中文 + English · 许可:MIT
 
 ---
 
 ## 这是什么
 
 ```
-┌─ 表盘 Coach Face (watchface/) ──────── Monkey C，USB 侧载 ─┐
-│  Layer 1  时间/日期 + 局部刷新走秒                          │
-│  Layer 2  步数进度环 · 心率 · Body Battery · 压力 · 电量   │  ← Garmin 原生、实时
-│  Layer 3  STRK 连胜 · SF 戒烟天数 · dKG 距目标体重         │  ← 后台每5min拉你的服务器
-└────────────────────────────────────────────────────────────┘
-┌─ 客制化工具包 (coach-tools/) ───────── Python，云端 API ──┐
-│  push_workout.py  把 Zone2 心率目标跑步推成结构化训练 → 表 │
-└────────────────────────────────────────────────────────────┘
+┌─ 表盘 Coach Face (watchface/) ──────────── Monkey C · USB 侧载 ─┐
+│  rim 步数环 + 6 点钟久坐楔形    ← Garmin 原生、实时、离线           │
+│  顶部时间(数字,无标签)                                            │
+│  「坚持」 128 「天」           ← 主角:超大绿色天数(后台每 5min 拉) │
+│  ♥ 62   ⚡ 78   ▮ 84%         ← 心率 / Body Battery / 电量          │
+│                                  (图标用代码画,不依赖字体,永不方块)│
+│  6月20日 周五                  ← 中文日期页脚                       │
+└────────────────────────────────────────────────────────────────┘
+┌─ 打卡 App Coach Checkin (watchapp/) ─────── Monkey C · USB 侧载 ─┐
+│  主菜单「教练」: 忍住 撑一下 抽了 站起来 起床 跑步 喝水            │
+│  · 撑一下 → 90 秒倒计时挺过烟瘾   · 久坐 → 后台唤醒「起来动」提醒   │
+│  · 全部事件离线入队 → 联网时按 Bearer 幂等回传到你的 ingest 后端    │
+└────────────────────────────────────────────────────────────────┘
+┌─ 客制化工具包 (coach-tools/) ───────────────── Python · 云端 API ─┐
+│  push_workout.py  把 Zone-2 心率目标跑步推成结构化训练 → 表        │
+└────────────────────────────────────────────────────────────────┘
 ```
 
-**两条路要分清**：表盘走 **USB 侧载**；训练计划走**云端 API**。
-云端账号**装不了**表盘，表盘也碰不到云端——它们互补，不互相替代。
+**三条路要分清**:表盘和 App 都走 **USB 侧载**(离线、零账号);训练计划走**云端 API**。
+云端账号**装不了**表盘/App,表盘/App 也碰不到云端——它们互补,不互相替代。
 
 ---
 
@@ -30,91 +43,179 @@
 
 ```
 .
-├─ watchface/              # Connect IQ 表盘（Monkey C）
-│  ├─ manifest.xml         # 目标 fr255，type=watchface，权限 Communications+Background
-│  ├─ monkey.jungle
-│  ├─ source/              # CoachFaceApp / CoachFaceView / CoachBackground
-│  └─ resources/           # strings / drawables / settings(properties)
-├─ coach-tools/            # 云端侧脚本（Python）
-│  └─ push_workout.py      # 推结构化训练到表
+├─ watchface/                       # 教练表盘(type=watchface,app id 764b137b…)
+│  ├─ manifest.xml                  # 目标 fr255 家族;权限 Communications + Background + SensorHistory;语言 eng+zhs
+│  ├─ monkey.jungle                 # sourcePath = source;source-secret
+│  ├─ source/
+│  │  ├─ CoachFaceApp.mc            # AppBase:注册后台、收后台数据存 Storage
+│  │  ├─ CoachFaceView.mc           # 禅意中文布局 + 代码画的图标
+│  │  └─ CoachBackground.mc         # 后台每 5min GET 教练 JSON
+│  └─ resources/                    # strings(教练表盘) / drawables / settings(properties)
+├─ watchapp/                        # 打卡 App(type=watch-app,app id a9f48c4e…)
+│  ├─ manifest.xml                  # 权限 Communications + Background + UserProfile;语言 eng+zhs
+│  ├─ source/
+│  │  ├─ CoachCheckinApp.mc         # AppBase:入口菜单 / 久坐唤醒分流 / 注册后台
+│  │  ├─ Menus.mc                   # 主菜单 + 跑步子菜单 + 确认框 + Toast
+│  │  ├─ Countdown.mc               # 90 秒烟瘾倒计时
+│  │  ├─ Sedentary.mc               # 久坐提醒视图
+│  │  ├─ CoachService.mc            # 后台:久坐检测 + 限流刷队列 + 勿扰判定
+│  │  └─ CoachNet.mc                # 离线事件队列 + 幂等批量回传
+│  ├─ resources/                    # strings(教练打卡) / drawables
+│  └─ source-secret/Secret.mc.example  # token 模板(真 Secret.mc 由构建注入、gitignored)
+├─ coach-tools/                     # 云端侧脚本(Python)
+│  └─ push_workout.py               # 推结构化训练到表
 ├─ docs/
-│  ├─ sideload-guide.md    # ★ 怎么编译 + 侧载 + 国行注意事项
-│  └─ design.md            # ★ 表盘设计与平台约束
-├─ build.sh                # 一键：装SDK → 下设备 → 编出 .prg
-├─ .github/workflows/      # CI：用 secrets 在云端编 .prg
-└─ LICENSE                 # MIT
+│  ├─ sideload-guide.md             # ★ 编译 + 侧载 + 国行注意事项
+│  └─ design.md                     # 平台/MIP 约束(注:部分内容描述旧英文布局,待更新)
+├─ build.sh                         # 一键编表盘 → build/CoachFace.prg
+├─ build-app.sh                     # 一键编打卡 App → build/CoachCheckin.prg
+├─ .github/workflows/build.yml      # CI:有 secrets 才编译,否则优雅跳过
+└─ LICENSE                          # MIT
 ```
 
 ---
 
-## 快速开始
+## 表盘 Coach Face
 
-```bash
-# 1) 一次性登录：仅用于下载 fr255 设备 profile（SDK 工具是公开直下、零账号的）。
-#    走国际区 Garmin 账号，与国行消费账号不通用；密码只进你的终端，用 ! 前缀自己跑：
-!  connect-iq-sdk-manager login
+**禅意 / 极简、中文优先**。一块小圆屏上只让一个数字称王:连续**坚持天数**(默认=戒烟天数)。
 
-# 2) 一键编译（自动直下公开 SDK + 下 fr255 profile + 用签名密钥编译）
-./build.sh                       # 产物：build/CoachFace.prg
+| 区域 | 内容 | 说明 |
+|---|---|---|
+| 边缘 | 步数进度环 + 久坐楔形 | 绿色环从 12 点顺时针走 `步数/目标`;6 点钟橙/红楔形随 move bar 等级增长 |
+| 顶部 | 时间数字 | 无标签,12/24 小时跟随系统 |
+| 中央 | 「坚持」+ 超大数字 + 「天」 | 数字用 `NUMBER_HOT` 绿色;无数据时显示 **「同步中」+ `--`**(不显示破碎大字) |
+| 下部 | ♥ 心率 · ⚡ Body Battery · ▮ 电量% | **图标全部用 dc 代码绘制**(心形/闪电/电池),不依赖字体 → 任何语言都不会变方块;数值用数字字体 |
+| 页脚 | `M月D日 周X` | 确定性构造,不依赖 locale;教练数据超 36h 未刷新会加「旧」橙色标记 |
 
-# 3) 侧载：插 USB → 拷 CoachFace.prg 到表的 GARMIN/Apps/ → 弹出 → 重启
-#    表上：长按 UP → 表盘 → Coach Face → Apply
-```
+**主显切换**:`HeroMetric` 属性 `0` = 戒烟天数(默认,绿)、`1` = 距目标体重(显示「减重 N 公斤」,橙,取 `toGoalKg`)。
 
-详见 **[docs/sideload-guide.md](docs/sideload-guide.md)**。
+**属性(`resources/settings/properties.xml`,侧载时即默认值)**:
 
-### 接上你自己的教练服务器（可选）
-表盘的 Layer 3 默认显示 `--`。给它喂数据：把 `watchface/resources/settings/properties.xml`
-里的 `CoachApiUrl` 改成你的 JSON 端点（如 `https://api.example.top/coach/face.json`），重编侧载。
-端点返回（字段都可选）：
+| 属性 | 类型 | 默认 | 用途 |
+|---|---|---|---|
+| `CoachApiUrl` | string | (空) | 教练数据 JSON 端点;空则当作纯原生表盘(不发后台请求) |
+| `StepGoal` | number | 8000 | 步数环目标(ActivityMonitor 有目标时优先用系统的) |
+| `TargetWeightKg` | float | 73.5 | 目标体重(配合体重数据计算 `toGoalKg`) |
+| `HeroMetric` | number | 0 | 中央主显:0=戒烟天数 / 1=距目标体重 |
+| `AccentColor` | number | 4259648(绿) | 强调色(环 / 主数字) |
+
+### 教练数据怎么来
+
+后台服务(`CoachBackground`)每 **5 分钟** `GET` 一次 JSON,**只带 `Accept: application/json` 头、不带 Authorization**——鉴权放在 URL 查询串里(见下)。拿到就存进 `Storage["coach"]` 并重绘;拉不到就保留上次值/降级为「同步中」。**需要手机在蓝牙范围内**(请求经手机 GCM 中继发出)。
+
+表盘读取的字段(都可选,**值必须是 JSON number**):
 
 ```json
-{ "streak": 12, "smokeFreeDays": 8, "toGoalKg": -9.2, "deficitKcal": 380 }
+{ "smokeFreeDays": 8, "toGoalKg": -9.2 }
 ```
 
-后台服务每 ≥5 分钟拉一次，**需要手机在蓝牙范围内**；拉不到就优雅降级为 `--`。
+> 当前布局只用 `smokeFreeDays`(主显 0)或 `toGoalKg`(主显 1);其余健康指标(心率/BB/电量/步数/日期)全部走 Garmin 原生、离线可用。
+
+### 侧载表盘没有手机设置页 → URL 编译期烧录
+
+USB 侧载的表盘/App 在佳明手机里**没有设置界面**,所以 `CoachApiUrl` 无法在手机上填。解决办法:`build.sh` 在编译时把完整 URL(含**只读** summary token)写进一个 **gitignored 的 `watchface/source-secret/Secret.mc`**(`Secret.FACE_URL`)。运行时 `coachUrl()` 的优先级:**用户设过的 `CoachApiUrl` 属性 > 编译期烧录的 `Secret.FACE_URL` > 空(纯原生表盘)**。token 永不进仓库。
 
 ---
 
-## 佳明 FR255 还能客制化什么（菜单）
+## 打卡 App Coach Checkin
 
-本仓库目前做了**表盘**和**训练推送**两块；同样的工具链还能做下面这些，欢迎 PR：
+一个交互式 CIQ **设备 App**(非表盘),腕上即点即记。主菜单标题「教练」:
 
-| 方向 | 类型 | 怎么做 |
+| 菜单项 | 行为 | 回传事件 |
 |---|---|---|
-| 自定义数据字段（跑步时的目标配速/区间） | CIQ Data Field | 写 Monkey C，侧载（单屏最多 2 个 CIQ 数据字段） |
-| 一眼速览 streak/缺口 | CIQ Glance | 写 Monkey C，侧载 |
-| 腕上一键打卡（想抽烟/喝水/起身→POST 回服务器） | CIQ Widget/App | 写 Monkey C，侧载 |
-| 结构化训练 / 写体重 | 云端 API | `coach-tools/`（`upload_workout` / `add_weigh_in`） |
-| 运动档案 / 数据页 / 提醒 / Move Alert | 表上内置设置 | 零代码，表上直接调 |
+| 忍住 | 立即记一次「忍住」+ Toast | `{action:smoke, value:resisted}` |
+| 撑一下 | 进入 **90 秒倒计时**挺过烟瘾;到 0 = 胜利震动「挺住了」 | 进入即乐观记 `resisted`(放弃也保留,不发取消) |
+| 抽了 | 确认框「记一支？」→ 是 | `{action:smoke, value:smoked}` |
+| 站起来 | 记一次久坐结束 | `{action:checkin, item:sit_done, value:done}` |
+| 起床 | 确认框「起床打卡？」→ 是 | `{action:checkin, item:wake, value:done}` |
+| 跑步 | 子菜单:完成 / 跳过 | `{action:checkin, item:run, value:done|skip}` |
+| 喝水 | 记一杯 +1 | `{action:checkin, item:water, value:1}` |
 
-云端 API 边界：✅ 训练（增/传/排期/删）、✅ 读全部健康数据、✅ 写体重；❌ 建训练计划（只读）、
-❌ 传可导航课程、❌ 任何 CIQ/表盘相关。
+**久坐提醒**:后台 `CoachService` 每 5 分钟检查 move bar 等级,升高且**当前可打扰**时,置标记并 `requestApplicationWake` → 前台弹出「久坐了 / 起来动」,按键即记 `sit_done`。每 30 分钟最多提醒一次。**勿扰判定**(`proactiveAllowed`):睡眠模式 / 免打扰 / 不在用户作息醒着的时段 → 一律静默,不震不亮屏。
+
+**离线优先 + 幂等回传**(`CoachNet`):每个事件带 `event_id`(设备盐 + 持久自增计数,跨重启不撞)、`ts_local`(ISO-8601 带 UTC 偏移)、`tz_offset_min`、`device_id`、`value`,入队(上限 60,超了丢最旧)。联网时 `POST {events:[…]}` 到 `Secret.COACH_URL`,头带 `Authorization: Bearer <Secret.COACH_TOKEN>`。后端按三桶应答 `{applied, duplicates, rejected}`——**任一桶命中即从队列删除**(幂等、重发安全);`-104`(离线)/`401`/超时/`5xx` 则保留重发。后台刷新限流(10 分钟内不重复 POST)。token 同样**编译期注入** gitignored 的 `watchapp/source-secret/Secret.mc`,源码树只放 `Secret.mc.example` 占位。
+
+---
+
+## 客制化工具包 coach-tools
+
+表盘/App 走 USB,云端 API 碰不到它们;但同一个佳明账号可以脚本化**把结构化训练推上表**。
+
+```bash
+python -m venv .venv && . .venv/bin/activate
+pip install -r coach-tools/requirements.txt
+
+python coach-tools/push_workout.py --dry-run                         # 只打印训练 JSON,不上传
+python coach-tools/push_workout.py --cn --zone2-low 136 --zone2-high 150   # 推一个 10/30/5 分钟 Zone-2 跑(国行加 --cn)
+python coach-tools/push_workout.py --cn --schedule 2026-06-22        # 上传并排期
+```
+
+依赖一份**已保存的佳明 token**(`garmin_tokens.json`,自己在能输密码+MFA 的机器上生成一次,用 `--tokens` 指过去);本仓库不替你登录。详见 [coach-tools/README.md](coach-tools/README.md)。
+
+---
+
+## 构建
+
+```bash
+# 一次性:仅为下载 fr255 设备 profile 登录一次(SDK 工具是公开直下、零账号的)
+#         走国际区 Garmin 账号,密码只进你的终端 —— 在 Claude Code 里用 ! 前缀自己跑:
+!  connect-iq-sdk-manager login
+
+./build.sh        # → build/CoachFace.prg     (表盘)
+./build-app.sh    # → build/CoachCheckin.prg  (打卡 App)
+```
+
+- **只有「下那份 fr255 设备 profile」需要一次 Garmin 登录**,SDK 工具和侧载全程零账号。
+- 默认编 `fr255`;其它型号设 `GARMIN_DEVICE=fr255s ./build.sh`。
+- **签名密钥**:每个 app 用你自己的 RSA-4096 私钥签名(默认 `~/.garmin_dev/developer_key.der`,**永不进 git**,fork 者自行生成)。
+- **密钥注入**:`build.sh` 从 `$COACH_FACE_URL` 或 `$COACH_PROJECT_DIR`(默认 `~/减肥机制`)的配置合成表盘 URL;`build-app.sh` 从 `$COACH_INGEST_TOKEN` 或 `~/减肥机制/config/secrets.toml [ingest].token` 取回传 token。两个 `source-secret/Secret.mc` 都 gitignored。
+
+**CI**(`.github/workflows/build.yml`):监听 `watchface/**`、`watchapp/**` 改动。配齐三个仓库 secret(`GARMIN_USERNAME` / `GARMIN_PASSWORD` / `SIGNING_KEY_B64`)就在云端编 `CoachFace.prg` 并上传产物;**没配 secret 则优雅跳过、不报红**(本项目主要靠本地 `build.sh` 出包)。
+
+---
+
+## 侧载到表上
+
+1. USB 连接 FR255(挂载为 U 盘),把 `build/CoachFace.prg` 和/或 `build/CoachCheckin.prg` 拷进表根目录 `GARMIN/Apps/`(**只拷 `.prg`**)。
+2. **安全弹出 → 拔线 → 重启手表**(刷缓存)。
+3. 表盘:长按 **UP → 表盘 → Coach Face → START → 应用**。
+4. App:在**活动与应用 / App 列表**里打开「教练打卡」。
+
+> 拷进去后 `.prg`「消失」是正常的(固件搬进隐藏内部存储);卸载用电脑版 **Garmin Express**。完整步骤与国行注意事项见 **[docs/sideload-guide.md](docs/sideload-guide.md)**。
+
+---
+
+## 中文显示说明
+
+FR255 在**简体中文系统语言**下加载内置的 Noto Sans SC 字形,**内联 UTF-8 中文字面量可以正常渲染**(已在真机上确认:坚持/天/日期/菜单都显中文,非方块)。两个 manifest 都声明了 `zhs`。要点:
+
+- 若把表的系统语言切成英文,所有中文会变成方块 □(数字、图标、环不受影响)。
+- 表盘的指标**用代码画的图标**(心形/闪电/电池)而非中文标签——既省小圆屏空间(一个汉字宽约等于字高,比 "HR" 宽 2–3 倍),又**与语言/字体无关、永不方块**。中文只花在最值得的地方:主显标签和日期。
 
 ---
 
 ## 诚实的注意事项
 
-- **国行侧载属"按机理确认"**：USB 侧载与区服无关（绕开了云/商店），但缺一篇国行实测公开记录——
-  **第一次自己拿编好的 `.prg` 坐实一遍**。
-- **签名密钥别进仓库**：`*.der`/`*.pem` 已被 `.gitignore` 挡掉；每个 fork 者自己生成、自己保管。
-- **云端 token 在"借来的时间"上**：`garth`/`garminconnect` 自 2026-03 起新登录被 Cloudflare 挡、
-  国行 SSO 还硬编码 `.com`。脚本能用全靠你手里没过期的 token——**备份它、别反复重登**。
-- **64 色 MIP 美学**：纯色块、高对比、无渐变/照片；128 KB 表盘内存是硬墙，别塞大位图/整套字体。
-- **中文显示**：FR 系列英文固件不带中文字形，本表盘标签用 ASCII（`STRK`/`SF`/`HR`…）；要中文得自己
-  subset 一个极小 CJK 字体（会吃内存，谨慎）。
+- **国行侧载**:USB 侧载与区服无关(绕开云/商店),机理成立且已真机验证表盘渲染;首次仍建议自己拿编好的 `.prg` 坐实一遍。
+- **签名密钥别进仓库**:`*.der`/`*.pem` 已被 `.gitignore` 挡掉;丢了密钥就无法再更新同一个 app,**备份它**。
+- **云端 token 在「借来的时间」上**:`garth`/`garminconnect` 自 ~2026-03 起新登录被 Cloudflare 挡(国行 SSO 还硬编码 `.com`),`coach-tools` 全靠你手里没过期的 token——**备份 `garmin_tokens.json`、别反复重登**(会触发封禁)。
+- **64 色 MIP 美学 + 内存墙**:纯色块、高对比、无渐变/照片;表盘约 98 KB(128 KB 预算内)、App 约 104 KB(768 KB 预算内),别塞大位图/整套字体。
+- **密钥模型**:真实 token 仅在构建期注入 gitignored 的 `source-secret/Secret.mc`,**绝不进公开仓库**;`Secret.mc.example` 是占位模板。
 
 ---
 
-## 参考的开源项目（均 MIT/Apache，避开 GPL 传染）
+## 参考的开源项目(均 MIT/Apache,避开 GPL 传染)
 
-- [ahuggel/SwissRailwayClock](https://github.com/ahuggel/SwissRailwayClock)（MIT）— 学习样板：局部刷新走秒、表内设置、明确支持 FR255
-- [fevieira27/MoveToBeActive](https://github.com/fevieira27/MoveToBeActive)（MIT）— 富数据 + 健康指标，含 FR255
-- [aguilarguisado/JSONFace](https://github.com/aguilarguisado/JSONFace)（MIT）— 小而干净，含 FR255
-- [garmin/connectiq-apps](https://github.com/garmin/connectiq-apps)（Apache-2.0）— 官方样例
-- [bombsimon/awesome-garmin](https://github.com/bombsimon/awesome-garmin) · [Likenttt/...samples-brief-explanations](https://github.com/Likenttt/garmin-connectiq-samples-brief-explanations)（中文注解）
+- [ahuggel/SwissRailwayClock](https://github.com/ahuggel/SwissRailwayClock)(MIT)— 局部刷新、表内设置、明确支持 FR255
+- [fevieira27/MoveToBeActive](https://github.com/fevieira27/MoveToBeActive)(MIT)— 富数据 + 健康指标(图标化),含 FR255
+- [aguilarguisado/JSONFace](https://github.com/aguilarguisado/JSONFace)(MIT)— 小而干净,含 FR255
+- [garmin/connectiq-apps](https://github.com/garmin/connectiq-apps)(Apache-2.0)— 官方样例
+- [bombsimon/awesome-garmin](https://github.com/bombsimon/awesome-garmin) · [Likenttt 的中文注解样例](https://github.com/Likenttt/garmin-connectiq-samples-brief-explanations)
+
+> 排除:Crystal / warmsound 等 **GPLv3** 项目(copyleft 传染),不作参考底座。
 
 ---
 
-## 致谢 / 许可
-MIT。表盘与佳明（Garmin）无任何官方关系；`coach-tools` 依赖**非官方逆向** API，仅供个人学习自用。
+## 许可 / 致谢
+
+MIT。本项目与佳明(Garmin)无任何官方关系;`coach-tools` 依赖**非官方逆向** API,仅供个人学习自用。
