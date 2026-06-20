@@ -19,6 +19,15 @@ class CoachService extends System.ServiceDelegate {
     }
 
     function onTemporalEvent() as Void {
+        // 夜间停轮询 / 省电 (§5, issue #5): skip the offline-queue retry while the
+        // watch is in sleep mode — Garmin's own "asleep" signal, no hardcoded hours.
+        // Late events still upload on the next awake wake; the backend dates by
+        // ts_local so nothing is mis-dated.
+        var ds = System.getDeviceSettings();
+        if ((ds has :isSleepMode) && ds.isSleepMode) {
+            Background.exit(null);
+            return;
+        }
         // flush returns true iff a request was issued; if so, onReceive calls
         // Background.exit once it settles. Otherwise end the run now.
         if (!coachNet().flush(true)) {
