@@ -1,0 +1,4 @@
+# Cloud-side toolkit deps. The watch face itself needs NONE of this — it is
+# built with the Connect IQ SDK (see ../build.sh), not Python.
+garminconnect>=0.3.6
+curl-cffi>=0.5

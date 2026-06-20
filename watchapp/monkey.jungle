@@ -1,0 +1,4 @@
+project.manifest = manifest.xml
+
+# source = app logic; source-secret = build-time injected token (gitignored)
+base.sourcePath = source;source-secret

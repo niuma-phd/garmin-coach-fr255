@@ -1,0 +1,6 @@
+# Build configuration for the Coach Face watch face.
+# Convention: source/ holds .mc, resources/ holds resources, manifest.xml is the manifest.
+project.manifest = manifest.xml
+
+# source = face logic; source-secret = build-time injected coach URL (gitignored)
+base.sourcePath = source;source-secret

@@ -1,0 +1,59 @@
+name: build-watchface
+
+# Builds the FR255 .prg in CI. Requires three repository secrets:
+#   GARMIN_USERNAME  – a Garmin (global) account email
+#   GARMIN_PASSWORD  – its password
+#   SIGNING_KEY_B64  – base64 of your developer_key.der  (base64 -w0 developer_key.der)
+# The signing key is a SECRET — never commit the raw .der.
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'watchface/**', '.github/workflows/build.yml' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Connect IQ SDK manager (lindell CLI)
+        run: |
+          curl -sSL -o ciq.deb \
+            https://github.com/lindell/connect-iq-sdk-manager-cli/releases/download/v0.8.4/connect-iq-sdk-manager-cli_0.8.4_amd64.deb
+          sudo dpkg -i ciq.deb
+
+      - name: Restore signing key
+        run: |
+          echo "${{ secrets.SIGNING_KEY_B64 }}" | base64 -d > developer_key.der
+
+      - name: Login + download SDK and device
+        env:
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+        run: |
+          connect-iq-sdk-manager login
+          connect-iq-sdk-manager agreement accept || true
+          connect-iq-sdk-manager sdk download
+          connect-iq-sdk-manager sdk set || true
+          connect-iq-sdk-manager device download -d fr255
+
+      - name: Build .prg
+        run: |
+          SDK_PATH="$(connect-iq-sdk-manager sdk current-path)"
+          mkdir -p build
+          "$SDK_PATH/bin/monkeyc" -d fr255 -f watchface/monkey.jungle \
+            -o build/CoachFace.prg -y developer_key.der -w
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CoachFace-fr255-prg
+          path: build/CoachFace.prg

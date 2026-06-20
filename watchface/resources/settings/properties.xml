@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Persistent properties. When the .prg is SIDELOADED over USB there is no store
+  settings UI, so these defaults are what ships. Set CoachApiUrl to your own
+  endpoint (e.g. https://api.jungerpf.top/coach/face.json) to enable the coach
+  layer; leave it empty to run as a pure Garmin-native face (no background calls).
+-->
+<properties>
+    <property id="CoachApiUrl" type="string"></property>
+    <property id="StepGoal" type="number">8000</property>
+    <property id="TargetWeightKg" type="float">73.5</property>
+    <!-- Hero number: 0 = smoke-free days (default), 1 = kg to goal -->
+    <property id="HeroMetric" type="number">0</property>
+    <property id="AccentColor" type="number">4259648</property>
+</properties>

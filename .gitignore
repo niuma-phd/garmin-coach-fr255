@@ -1,0 +1,43 @@
+# ---- secrets: NEVER commit these ----
+*.der
+*.pem
+developer_key*
+.app_uuid
+config/secrets*.toml
+.garmin_creds
+*garmin_tokens*.json
+
+# ---- Connect IQ build output ----
+build/
+bin/
+*.prg
+*.iq
+*.debug.xml
+
+# ---- Python ----
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ---- OS / editor ----
+.DS_Store
+*.swp
+.vscode/
+.idea/
+.omc/
+.playwright-mcp/
+
+# watch app injected secret (token)
+watchapp/source-secret/Secret.mc
+# watch face injected coach URL (read-only summary token)
+watchface/source-secret/Secret.mc
+
+# ---- internal / not for the public repo ----
+# Session handoff + backend-side coordination docs. These contain backend
+# deployment internals (Cloudflare account/tunnel/zone IDs, systemd/cloudflared
+# notes, token-printing commands) and per-session working notes — kept local,
+# never published. The on-watch contract still lives in code + docs/.
+KICKOFF_next-session.md
+COACH_INGEST_LIVE.md
+COACH_WATCH_REQUIREMENTS.md

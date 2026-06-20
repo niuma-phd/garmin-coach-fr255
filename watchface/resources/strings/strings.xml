@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<strings>
+    <string id="AppName">教练表盘</string>
+    <string id="CoachApiUrlTitle">教练接口地址 (JSON)</string>
+    <string id="StepGoalTitle">步数目标</string>
+    <string id="TargetWeightTitle">目标体重 (公斤)</string>
+    <string id="HeroMetricTitle">主显数字</string>
+    <string id="AccentTitle">强调色</string>
+</strings>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Connect IQ manifest — Coach Face for Garmin Forerunner 255 (device id: fr255).
+  Only the base FR255 (260x260) is targeted here. To also build for the Music /
+  S / S-Music variants, add <iq:product id="fr255m"/> / "fr255s" / "fr255sm".
+  The app id below is this build's identity; generate your OWN if you fork.
+-->
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application entry="CoachFaceApp"
+                    id="764b137bbe264f84932d955b97519d29"
+                    launcherIcon="@Drawables.LauncherIcon"
+                    minApiLevel="3.1.0"
+                    name="@Strings.AppName"
+                    type="watchface">
+        <iq:products>
+            <iq:product id="fr255"/>
+            <iq:product id="fr255m"/>
+            <iq:product id="fr255s"/>
+            <iq:product id="fr255sm"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Communications"/>
+            <iq:uses-permission id="Background"/>
+            <iq:uses-permission id="SensorHistory"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+            <iq:language>zhs</iq:language>
+        </iq:languages>
+    </iq:application>
+</iq:manifest>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Store / Connect-IQ-app settings UI. Harmless (and unused) when sideloaded;
+  used only if this face is installed via the Connect IQ Store.
+-->
+<settings>
+    <setting propertyKey="@Properties.CoachApiUrl" title="@Strings.CoachApiUrlTitle">
+        <settingConfig type="alphaNumeric"/>
+    </setting>
+    <setting propertyKey="@Properties.StepGoal" title="@Strings.StepGoalTitle">
+        <settingConfig type="numeric" min="1000" max="50000"/>
+    </setting>
+    <setting propertyKey="@Properties.TargetWeightKg" title="@Strings.TargetWeightTitle">
+        <settingConfig type="numeric" min="40" max="200"/>
+    </setting>
+    <setting propertyKey="@Properties.HeroMetric" title="@Strings.HeroMetricTitle">
+        <settingConfig type="list">
+            <listEntry value="0">Smoke-free days</listEntry>
+            <listEntry value="1">Kg to goal</listEntry>
+        </settingConfig>
+    </setting>
+    <setting propertyKey="@Properties.AccentColor" title="@Strings.AccentTitle">
+        <settingConfig type="list">
+            <listEntry value="4259648">Green</listEntry>
+            <listEntry value="65535">Cyan</listEntry>
+            <listEntry value="16744192">Orange</listEntry>
+            <listEntry value="16711680">Red</listEntry>
+        </settingConfig>
+    </setting>
+</settings>
