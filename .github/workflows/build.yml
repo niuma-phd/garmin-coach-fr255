@@ -1,40 +1,73 @@
 name: build-watchface
 
-# Builds the FR255 .prg in CI. Requires three repository secrets:
-#   GARMIN_USERNAME  – a Garmin (global) account email
-#   GARMIN_PASSWORD  – its password
-#   SIGNING_KEY_B64  – base64 of your developer_key.der  (base64 -w0 developer_key.der)
-# The signing key is a SECRET — never commit the raw .der.
+# Compiles the FR255 .prg in CI. This needs THREE repository secrets
+# (Settings -> Secrets and variables -> Actions):
+#   GARMIN_USERNAME  - a Garmin (global, .com) account email (for the device profile download)
+#   GARMIN_PASSWORD  - its password
+#   SIGNING_KEY_B64  - base64 of your developer_key.der  (base64 -w0 developer_key.der)
+# The signing key is a SECRET - never commit the raw .der.
+#
+# When those secrets are NOT set (e.g. a fresh clone / fork), the build is
+# SKIPPED instead of failing: this project is primarily USB-sideloaded and
+# compiled locally with ./build.sh, so green-without-secrets is the correct
+# default and avoids a red X on every push.
 
 on:
   push:
-    branches: [ main ]
-    paths: [ 'watchface/**', '.github/workflows/build.yml' ]
+    branches: [main]
+    paths:
+      - 'watchface/**'
+      - 'watchapp/**'
+      - '.github/workflows/build.yml'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect build secrets
+        id: gate
+        env:
+          GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          SIGNING_KEY_B64: ${{ secrets.SIGNING_KEY_B64 }}
+        run: |
+          if [ -n "$GARMIN_USERNAME" ] && [ -n "$GARMIN_PASSWORD" ] && [ -n "$SIGNING_KEY_B64" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "Build secrets present -> will compile."
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=CI build skipped::GARMIN_USERNAME / GARMIN_PASSWORD / SIGNING_KEY_B64 are not set. Add them in repo Settings to enable CI compiles. Local sideload builds use ./build.sh."
+          fi
 
       - name: Set up JDK
+        if: steps.gate.outputs.ready == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Install Connect IQ SDK manager (lindell CLI)
+        if: steps.gate.outputs.ready == 'true'
         run: |
           curl -sSL -o ciq.deb \
             https://github.com/lindell/connect-iq-sdk-manager-cli/releases/download/v0.8.4/connect-iq-sdk-manager-cli_0.8.4_amd64.deb
           sudo dpkg -i ciq.deb
 
       - name: Restore signing key
-        run: |
-          echo "${{ secrets.SIGNING_KEY_B64 }}" | base64 -d > developer_key.der
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          SIGNING_KEY_B64: ${{ secrets.SIGNING_KEY_B64 }}
+        run: printf '%s' "$SIGNING_KEY_B64" | base64 -d > developer_key.der
 
-      - name: Login + download SDK and device
+      - name: Login + download SDK and device profile
+        if: steps.gate.outputs.ready == 'true'
         env:
           GARMIN_USERNAME: ${{ secrets.GARMIN_USERNAME }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
@@ -45,7 +78,8 @@ jobs:
           connect-iq-sdk-manager sdk set || true
           connect-iq-sdk-manager device download -d fr255
 
-      - name: Build .prg
+      - name: Build CoachFace.prg
+        if: steps.gate.outputs.ready == 'true'
         run: |
           SDK_PATH="$(connect-iq-sdk-manager sdk current-path)"
           mkdir -p build
@@ -53,6 +87,7 @@ jobs:
             -o build/CoachFace.prg -y developer_key.der -w
 
       - name: Upload artifact
+        if: steps.gate.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: CoachFace-fr255-prg
