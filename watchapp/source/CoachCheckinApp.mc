@@ -5,8 +5,8 @@ import Toybox.Background;
 import Toybox.System;
 import Toybox.Time;
 
-// Interactive coach check-in app. Foreground = menus/countdown/alerts;
-// background ServiceDelegate = 5-min sedentary poll + throttled queue flush.
+// Interactive coach check-in app. Foreground = menus / urge countdown;
+// background ServiceDelegate = throttled flush of the offline check-in queue.
 // NOT annotated (:background) as a whole — only the service + CoachNet are, so
 // the UI code is excluded from the background scope (where WatchUi is absent).
 class CoachCheckinApp extends Application.AppBase {
@@ -23,20 +23,8 @@ class CoachCheckinApp extends Application.AppBase {
     function onStop(state as Lang.Dictionary?) as Void {
     }
 
-    // Entry view: smoking-first main menu, UNLESS the background just flagged a
-    // fresh sedentary nudge (then open the STAND alert).
+    // Entry view: the main check-in menu (smoking actions first).
     function getInitialView() as [WatchUi.Views] or [WatchUi.Views, WatchUi.InputDelegates] {
-        var wake = Application.Storage.getValue("wakeMove");
-        if (wake != null) {
-            Application.Storage.deleteValue("wakeMove");
-            var fresh = (Time.now().value() - wake) < 600;  // ignore stale flags (>10 min)
-            // Re-check sleep here too: a wake requested while awake may be honored by the
-            // OS minutes later, after the user dozed off — don't even light the screen then.
-            if (fresh && proactiveAllowed()) {
-                var v = new SedentaryView();
-                return [v, new SedentaryDelegate(v)];
-            }
-        }
         return [buildMainMenu(), new MainMenuDelegate()];
     }
 

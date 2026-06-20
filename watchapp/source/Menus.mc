@@ -38,9 +38,6 @@ function buildMainMenu() as WatchUi.Menu2 {
     m.addItem(new WatchUi.MenuItem("忍住",   "扛过去了",  :resist, null));
     m.addItem(new WatchUi.MenuItem("撑一下", "倒计时",    :hold,   null));
     m.addItem(new WatchUi.MenuItem("抽了",   "记一支",    :smoked, null));
-    m.addItem(new WatchUi.MenuItem("站起来", "久坐结束",  :stood,  null));
-    m.addItem(new WatchUi.MenuItem("起床",   "打卡",      :wake,   null));
-    m.addItem(new WatchUi.MenuItem("跑步",   "完成/跳过", :run,    null));
     m.addItem(new WatchUi.MenuItem("喝水",   "加一杯",    :water,  null));
     return m;
 }
@@ -60,44 +57,11 @@ class MainMenuDelegate extends WatchUi.Menu2InputDelegate {
             WatchUi.pushView(new CountdownView(), new CountdownDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :smoked) {
             WatchUi.pushView(new WatchUi.Confirmation("记一支？"), new SmokedConfirm(), WatchUi.SLIDE_LEFT);
-        } else if (id == :stood) {
-            logCheckin("sit_done", "done");
-            vibe(:ok);
-            WatchUi.pushView(new ToastView("站起来"), new ToastDelegate(), WatchUi.SLIDE_LEFT);
-        } else if (id == :wake) {
-            WatchUi.pushView(new WatchUi.Confirmation("起床打卡？"), new WakeConfirm(), WatchUi.SLIDE_LEFT);
-        } else if (id == :run) {
-            WatchUi.pushView(buildRunMenu(), new RunMenuDelegate(), WatchUi.SLIDE_LEFT);
         } else if (id == :water) {
             logCheckin("water", "1");
             vibe(:ok);
             WatchUi.pushView(new ToastView("喝水 +1"), new ToastDelegate(), WatchUi.SLIDE_LEFT);
         }
-    }
-}
-
-// ── run submenu ────────────────────────────────────────────────────────────
-
-function buildRunMenu() as WatchUi.Menu2 {
-    var m = new WatchUi.Menu2({ :title => "跑步" });
-    m.addItem(new WatchUi.MenuItem("完成", "今天跑了", :run_done, null));
-    m.addItem(new WatchUi.MenuItem("跳过", "今天不跑", :run_skip, null));
-    return m;
-}
-
-class RunMenuDelegate extends WatchUi.Menu2InputDelegate {
-    function initialize() {
-        Menu2InputDelegate.initialize();
-    }
-    function onSelect(item as WatchUi.MenuItem) as Void {
-        var id = item.getId();
-        if (id == :run_done) {
-            logCheckin("run", "done");
-        } else if (id == :run_skip) {
-            logCheckin("run", "skip");
-        }
-        vibe(:ok);
-        WatchUi.popView(WatchUi.SLIDE_RIGHT);  // back to main menu
     }
 }
 
@@ -110,19 +74,6 @@ class SmokedConfirm extends WatchUi.ConfirmationDelegate {
     function onResponse(resp as WatchUi.Confirm) as Lang.Boolean {
         if (resp == WatchUi.CONFIRM_YES) {
             logSmoke("smoked");
-            vibe(:ok);
-        }
-        return true;
-    }
-}
-
-class WakeConfirm extends WatchUi.ConfirmationDelegate {
-    function initialize() {
-        ConfirmationDelegate.initialize();
-    }
-    function onResponse(resp as WatchUi.Confirm) as Lang.Boolean {
-        if (resp == WatchUi.CONFIRM_YES) {
-            logCheckin("wake", "done");
             vibe(:ok);
         }
         return true;
