@@ -19,6 +19,17 @@ class CoachService extends System.ServiceDelegate {
     }
 
     function onTemporalEvent() as Void {
+        // Night = stop polling (§7 battery): outside the active window do ZERO
+        // work — no moveBar read, no network — so an overnight wake costs ~nothing.
+        // This also serves as the sedentary time-gate (9<=localHour<22), aligned
+        // with the coach backend [sedentary] active_start_hour/active_end_hour.
+        // (CIQ can't safely deleteTemporalEvent overnight — nothing would re-arm
+        //  it until the app is next opened — so we keep the 5-min registration
+        //  but make the night wake a no-op.)
+        if (!inActiveWindow()) {
+            Background.exit(null);
+            return;
+        }
         checkSedentary();
         // flush returns true iff a request was issued; if so, onReceive calls
         // Background.exit once it settles. Otherwise end the run now.
@@ -46,6 +57,17 @@ class CoachService extends System.ServiceDelegate {
             Background.requestApplicationWake("MOVE");
         }
     }
+}
+
+// Sedentary active window (device-local hours). Only poll/nudge between these,
+// aligned with the coach backend [sedentary] active_start_hour=9 / active_end_hour=22.
+// Untagged (like proactiveAllowed) so it lives in BOTH foreground & background scopes.
+const SED_ACTIVE_START = 9;
+const SED_ACTIVE_END = 22;
+
+function inActiveWindow() as Lang.Boolean {
+    var h = System.getClockTime().hour;   // device-local hour, 0..23
+    return (h >= SED_ACTIVE_START) && (h < SED_ACTIVE_END);
 }
 
 // True only when it's OK to proactively disturb the user (wake the app / vibrate).
