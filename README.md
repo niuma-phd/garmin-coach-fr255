@@ -3,7 +3,7 @@
 一套**开源**的 Garmin Forerunner 255 客制化方案,三件套互补:
 
 - **教练表盘 `watchface/`**(Coach Face)— 极简「禅意」中文表盘,主角是一个超大的绿色**坚持天数**;
-- **打卡 App `watchapp/`**(Coach Checkin)— 腕上一键打卡:忍住/抽了/起床/跑步/喝水…,离线排队、联网回传;
+- **打卡 App `watchapp/`**(Coach Checkin)— 腕上一键打卡:忍住 / 撑一下 / 抽了 / 喝水,离线排队、联网回传;
 - **客制化工具包 `coach-tools/`** — 用云端账号把结构化训练(Zone-2 心率跑)推到表上。
 
 为 MIP 屏(260×260 / 64 色 / 常显)量身设计,**USB 侧载即用,不依赖商店、与区服无关**。
@@ -25,8 +25,8 @@
 │  6月20日 周五                  ← 中文日期页脚                       │
 └────────────────────────────────────────────────────────────────┘
 ┌─ 打卡 App Coach Checkin (watchapp/) ─────── Monkey C · USB 侧载 ─┐
-│  主菜单「教练」: 忍住 撑一下 抽了 站起来 起床 跑步 喝水            │
-│  · 撑一下 → 90 秒倒计时挺过烟瘾   · 久坐 → 后台唤醒「起来动」提醒   │
+│  主菜单「教练」: 忍住 · 撑一下 · 抽了 · 喝水                        │
+│  · 撑一下 → 90 秒倒计时挺过烟瘾   · 久坐交给手表原生 Move Alert(见下)│
 │  · 全部事件离线入队 → 联网时按 Bearer 幂等回传到你的 ingest 后端    │
 └────────────────────────────────────────────────────────────────┘
 ┌─ 客制化工具包 (coach-tools/) ───────────────── Python · 云端 API ─┐
@@ -54,11 +54,10 @@
 ├─ watchapp/                        # 打卡 App(type=watch-app,app id a9f48c4e…)
 │  ├─ manifest.xml                  # 权限 Communications + Background + UserProfile;语言 eng+zhs
 │  ├─ source/
-│  │  ├─ CoachCheckinApp.mc         # AppBase:入口菜单 / 久坐唤醒分流 / 注册后台
-│  │  ├─ Menus.mc                   # 主菜单 + 跑步子菜单 + 确认框 + Toast
+│  │  ├─ CoachCheckinApp.mc         # AppBase:入口落主菜单 / 注册后台
+│  │  ├─ Menus.mc                   # 主菜单(忍住/撑一下/抽了/喝水)+ 确认框 + Toast
 │  │  ├─ Countdown.mc               # 90 秒烟瘾倒计时
-│  │  ├─ Sedentary.mc               # 久坐提醒视图
-│  │  ├─ CoachService.mc            # 后台:久坐检测 + 限流刷队列 + 勿扰判定
+│  │  ├─ CoachService.mc            # 后台:仅离线队列补传(睡眠模式跳过)
 │  │  └─ CoachNet.mc                # 离线事件队列 + 幂等批量回传
 │  ├─ resources/                    # strings(教练打卡) / drawables
 │  └─ source-secret/Secret.mc.example  # token 模板(真 Secret.mc 由构建注入、gitignored)
@@ -121,19 +120,25 @@ USB 侧载的表盘/App 在佳明手机里**没有设置界面**,所以 `CoachAp
 
 一个交互式 CIQ **设备 App**(非表盘),腕上即点即记。主菜单标题「教练」:
 
-| 菜单项 | 行为 | 回传事件 |
-|---|---|---|
-| 忍住 | 立即记一次「忍住」+ Toast | `{action:smoke, value:resisted}` |
-| 撑一下 | 进入 **90 秒倒计时**挺过烟瘾;到 0 = 胜利震动「挺住了」 | 进入即乐观记 `resisted`(放弃也保留,不发取消) |
-| 抽了 | 确认框「记一支？」→ 是 | `{action:smoke, value:smoked}` |
-| 站起来 | 记一次久坐结束 | `{action:checkin, item:sit_done, value:done}` |
-| 起床 | 确认框「起床打卡？」→ 是 | `{action:checkin, item:wake, value:done}` |
-| 跑步 | 子菜单:完成 / 跳过 | `{action:checkin, item:run, value:done|skip}` |
-| 喝水 | 记一杯 +1 | `{action:checkin, item:water, value:1}` |
+| 菜单项 | 副标题 | 行为 | 回传事件 |
+|---|---|---|---|
+| 忍住 | 扛过去了 | 立即记一次「忍住」+ Toast「已记录」 | `{action:smoke, value:resisted}` |
+| 撑一下 | 倒计时 | 进入 **90 秒倒计时**挺过烟瘾;到 0 = 胜利震动 | 进入即乐观记 `resisted`(放弃也保留,不发取消) |
+| 抽了 | 记一支 | 确认框「记一支？」→ 是 | `{action:smoke, value:smoked}` |
+| 喝水 | 加一杯 | 记一杯 +1 + Toast | `{action:checkin, item:water, value:1}` |
 
-**久坐提醒**:后台 `CoachService` 每 5 分钟检查 move bar 等级,升高且**当前可打扰**时,置标记并 `requestApplicationWake` → 前台弹出「久坐了 / 起来动」,按键即记 `sit_done`。每 30 分钟最多提醒一次。**勿扰判定**(`proactiveAllowed`):睡眠模式 / 免打扰 / 不在用户作息醒着的时段 → 一律静默,不震不亮屏。
+### 设计原则:能从手表数据分析到的,不在 App 里重复做
 
-**离线优先 + 幂等回传**(`CoachNet`):每个事件带 `event_id`(设备盐 + 持久自增计数,跨重启不撞)、`ts_local`(ISO-8601 带 UTC 偏移)、`tz_offset_min`、`device_id`、`value`,入队(上限 60,超了丢最旧)。联网时 `POST {events:[…]}` 到 `Secret.COACH_URL`,头带 `Authorization: Bearer <Secret.COACH_TOKEN>`。后端按三桶应答 `{applied, duplicates, rejected}`——**任一桶命中即从队列删除**(幂等、重发安全);`-104`(离线)/`401`/超时/`5xx` 则保留重发。后台刷新限流(10 分钟内不重复 POST)。token 同样**编译期注入** gitignored 的 `watchapp/source-secret/Secret.mc`,源码树只放 `Secret.mc.example` 占位。
+主菜单只保留**手表自己分析不出来**的打卡——抽烟(忍住/撑一下/抽了)和喝水。起床、晨跑、久坐这类**手表原生就有数据**的,一律不做手动打卡项,改由后端从 Garmin Connect 的睡眠 / 活动 / move-bar 数据推导,避免让用户在表上再点一遍。
+
+**久坐为什么不在 App 里做(2+1)**:CIQ 后台**拿不到震动权限**(`Toybox.Attention` 在 Background 不可用,调用会抛 `Module 'Toybox.Attention' not available to 'Background'`),表盘 / 数据字段也不会全天跑自定义计时——所以「久坐到点自动震一下」**手表 App 实现不了**。久坐拆成两条:
+
+- **+1 手表原生 Move Alert(实时那一下)**:静止满 1 小时震动提醒,走动 1–2 分钟清除。开启:长按 **UP → Notifications & Alerts → System Alerts → Health & Wellness → Move Alert → On**;白天别开勿扰(**DND 会压掉震动**)。
+- **2 后端读数据(复盘补刀)**:后端读 Connect 同步上来的 move-bar / 久坐数据,发现久坐过久就推一条**回顾式**提醒(「你刚才坐了 X 分钟,起来动动吧」)。受 Connect 同步延迟影响、非实时,定位为补刀 + 日终汇总,不追求秒级。
+
+> **Move Alert 间隔不可改**:那 1 小时触发是固件写死的——手表本机、Garmin Connect App、Connect IQ API 三处**都只有开/关**,没有任何修改间隔的官方途径(`ActivityMonitor.Info.moveBarLevel` 只读、全 API 面无 setter,Garmin 官方:「There isn't a way to modify the move alert with Connect IQ」)。想要自定义间隔只能走上面「后端读数据」那条。
+
+**离线优先 + 幂等回传**(`CoachNet`):每个事件带 `event_id`(设备盐 + 持久自增计数,跨重启不撞)、`ts_local`(ISO-8601 带 UTC 偏移)、`tz_offset_min`、`device_id`、`value`,入队(上限 60,超了丢最旧)。联网时 `POST {events:[…]}` 到 `Secret.COACH_URL`,头带 `Authorization: Bearer <Secret.COACH_TOKEN>`。后端按三桶应答 `{applied, duplicates, rejected}`——**任一桶命中即从队列删除**(幂等、重发安全);`-104`(离线)/`401`/超时/`5xx` 则保留重发。后台 `CoachService` 现在**只做离线队列补传**(每 ~5 分钟一次,**睡眠模式下跳过、不出网**),10 分钟内不重复 POST——不再做任何久坐唤醒(见上「设计原则」)。token 同样**编译期注入** gitignored 的 `watchapp/source-secret/Secret.mc`,源码树只放 `Secret.mc.example` 占位。
 
 ---
 
