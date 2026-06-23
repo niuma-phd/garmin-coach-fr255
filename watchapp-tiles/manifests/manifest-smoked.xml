@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 抽了 tile — single-action CIQ watch-app with a glance card. fr255 only. -->
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+    <iq:application
+        id="f1d795e189374637919ea033bb4261c3"
+        type="watch-app"
+        name="@Strings.AppName"
+        entry="TileApp"
+        launcherIcon="@Drawables.LauncherIcon"
+        minApiLevel="3.1.0">
+        <iq:products>
+            <iq:product id="fr255"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Communications"/>
+        </iq:permissions>
+        <iq:languages>
+            <iq:language>eng</iq:language>
+            <iq:language>zhs</iq:language>
+        </iq:languages>
+    </iq:application>
+</iq:manifest>

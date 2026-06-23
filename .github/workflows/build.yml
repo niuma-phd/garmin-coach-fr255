@@ -17,7 +17,7 @@ on:
     branches: [main]
     paths:
       - 'watchface/**'
-      - 'watchapp/**'
+      - 'watchapp-tiles/**'
       - '.github/workflows/build.yml'
   workflow_dispatch:
 

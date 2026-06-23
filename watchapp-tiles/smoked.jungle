@@ -1,0 +1,3 @@
+project.manifest = manifests/manifest-smoked.xml
+base.sourcePath = source;source-gen
+base.resourcePath = res-gen

@@ -28,8 +28,6 @@ venv/
 .omc/
 .playwright-mcp/
 
-# watch app injected secret (token)
-watchapp/source-secret/Secret.mc
 # watch face injected coach URL (read-only summary token)
 watchface/source-secret/Secret.mc
 
@@ -41,3 +39,9 @@ watchface/source-secret/Secret.mc
 KICKOFF_next-session.md
 COACH_INGEST_LIVE.md
 COACH_WATCH_REQUIREMENTS.md
+# on-device CIQ crash logs pulled off the watch for debugging (paths/part-numbers)
+logsfromGARMIN/
+
+# tile apps: injected token (Secret.mc) + generated per-build sources/strings
+watchapp-tiles/source-gen/
+watchapp-tiles/res-gen/

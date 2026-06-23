@@ -5,34 +5,29 @@ import Toybox.Time.Gregorian;
 import Toybox.Communications;
 import Toybox.Application;
 import Toybox.Math;
-import Toybox.Background;
 
-// ── tunables ──────────────────────────────────────────────────────────────
-(:background) const Q_KEY = "q";          // Storage key: pending event queue (Array<Dict>)
-(:background) const Q_MAX = 60;           // hard cap; oldest trimmed past this
-(:background) const FLUSH_THROTTLE = 600; // background won't re-POST within 10 min
+// Trimmed, FOREGROUND-ONLY offline queue + idempotent upload for the single-action
+// tile apps. No background service (these apps are launched, fire one action, and
+// auto-close), so events are sent on launch; anything not confirmed stays queued in
+// this app's Storage and is retried (+ deduped server-side by event_id) next launch.
+// Each tile app has its OWN app id → its OWN Storage/queue/counter (CIQ isolates
+// Storage per app); the backend is idempotent so cross-app duplicates are harmless.
 
-// Singleton per VM (foreground and background are separate VMs → each builds its own).
-(:background) var gNet as CoachNet? = null;
+const Q_KEY = "q";          // Storage key: pending event queue (Array<Dict>)
+const Q_MAX = 60;           // hard cap; oldest trimmed past this
 
-(:background)
+var gNet as CoachNet? = null;
+
 function coachNet() as CoachNet {
     if (gNet == null) { gNet = new CoachNet(); }
     return gNet as CoachNet;
 }
 
-// Offline-first event queue + idempotent batch upload to the coach ingest endpoint.
-// Contract: POST {events:[{event_id, ts_local, tz_offset_min, device_id, value:{...}}]}
-//           Bearer auth; 200 → {applied,duplicates,rejected[{event_id,reason}]}.
-// Any of the three buckets means "stop retrying that event" → trim from queue.
-(:background)
 class CoachNet {
-    var _busy as Lang.Boolean;   // a request is in flight (avoid overlap)
-    var _bg as Lang.Boolean;     // current in-flight request was started from the background VM
+    var _busy as Lang.Boolean;
 
     function initialize() {
         _busy = false;
-        _bg = false;
     }
 
     // ── identity / time ───────────────────────────────────────────────────
@@ -50,8 +45,7 @@ class CoachNet {
         return id as Lang.String;
     }
 
-    // UUID-ish idempotency key: device salt + monotonic persisted counter.
-    // Survives reboot (counter in Storage); never collides across this device.
+    // device salt + monotonic persisted counter → collision-safe idempotency key.
     function nextEventId() as Lang.String {
         var stored = Application.Storage.getValue("eid");
         var c = (stored == null) ? 0 : stored as Lang.Number;
@@ -64,7 +58,7 @@ class CoachNet {
         return System.getClockTime().timeZoneOffset;
     }
 
-    // ISO-8601 with explicit offset, e.g. 2026-06-20T09:00:00+08:00
+    // ISO-8601 with explicit offset, e.g. 2026-06-22T09:00:00+08:00
     function tsLocal() as Lang.String {
         var g = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
         var off = tzOffsetSec();
@@ -84,11 +78,6 @@ class CoachNet {
         return q as Lang.Array;
     }
 
-    function pending() as Lang.Number {
-        return _queue().size();
-    }
-
-    // value = the inner {action, ...} dict; wraps it into a full event and stores it.
     function enqueue(value as Lang.Dictionary) as Void {
         var ev = {
             "event_id" => nextEventId(),
@@ -105,21 +94,13 @@ class CoachNet {
         Application.Storage.setValue(Q_KEY, q);
     }
 
-    // ── send ──────────────────────────────────────────────────────────────
-    // Returns true iff a web request was actually issued (caller may need to know
-    // so the background VM can defer Background.exit to onReceive).
-    function flush(isBackground as Lang.Boolean) as Lang.Boolean {
-        if (_busy) { return false; }
+    // ── send (foreground) ───────────────────────────────────────────────────
+    function flush() as Void {
+        if (_busy) { return; }
         var q = _queue();
-        if (q.size() == 0) { return false; }
-        if (Secret.COACH_TOKEN.equals("")) { return false; }  // not provisioned
-        if (isBackground) {
-            var last = Application.Storage.getValue("lastSend") as Lang.Number?;
-            var nowS = Time.now().value();
-            if (last != null && (nowS - last) < FLUSH_THROTTLE) { return false; }
-        }
+        if (q.size() == 0) { return; }
+        if (Secret.COACH_TOKEN.equals("")) { return; }  // not provisioned
         _busy = true;
-        _bg = isBackground;
         var options = {
             :method => Communications.HTTP_REQUEST_METHOD_POST,
             :headers => {
@@ -129,20 +110,14 @@ class CoachNet {
             :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
         };
         Communications.makeWebRequest(Secret.COACH_URL, { "events" => q }, options, method(:onReceive));
-        return true;
     }
 
     function onReceive(responseCode as Lang.Number, data as Lang.Dictionary or Lang.String or Null) as Void {
         _busy = false;
         if (responseCode == 200 && data instanceof Lang.Dictionary) {
             _trim(data);
-            Application.Storage.setValue("lastSend", Time.now().value());
         }
-        // else: -104 offline / 401 / 5xx → keep queue, retry on next flush.
-        if (_bg) {
-            _bg = false;
-            Background.exit(null);  // end the background run now the upload settled
-        }
+        // else: -104 offline / 401 / 5xx → keep queue, retry on next launch.
     }
 
     // Remove every queued event whose id appears in applied|duplicates|rejected.

@@ -3,15 +3,14 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Timer;
 
+// "撑一下" tile: the urge-interception countdown. Entering it optimistically logs
+// "resisted" (kept even on give-up; no count, no cancel event), then runs a visible
+// 90s countdown. Reaching 0 = a small win cue, then auto-exits to the watch face.
+
 const COUNTDOWN_SECS = 90;
 
-// Set by GiveUpConfirm on YES; consumed by CountdownView.onShow to exit cleanly
-// after the confirmation dismisses (avoids fragile double-pop ordering).
 var gGiveUp as Lang.Boolean = false;
 
-// Urge interception: optimistically log "resisted" the instant the user chooses
-// to ride it out (MVP Q4 — kept even on give-up; no count, no cancel event), then
-// run a visible 90s countdown. Reaching 0 = a small win cue.
 class CountdownView extends WatchUi.View {
     var _timer as Timer.Timer?;
     var _left as Lang.Number;
@@ -82,7 +81,6 @@ class CountdownDelegate extends WatchUi.BehaviorDelegate {
     function initialize() {
         BehaviorDelegate.initialize();
     }
-    // BACK during countdown → confirm exit (the resist is already logged; MVP keeps it).
     function onBack() as Lang.Boolean {
         WatchUi.pushView(new WatchUi.Confirmation("放弃？"), new GiveUpConfirm(), WatchUi.SLIDE_LEFT);
         return true;

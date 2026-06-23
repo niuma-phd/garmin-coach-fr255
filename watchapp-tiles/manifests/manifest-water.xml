@@ -1,26 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Coach Checkin — interactive CIQ Watch App (device app, NOT a watch face).
-     Separate app id from the Coach Face watch face; own permissions.
-     Permissions: Communications (HTTPS via phone GCM), Background (5-min temporal + wake).
-     Attention (vibrate) needs NO manifest permission. -->
+<!-- 喝水 tile — single-action CIQ watch-app with a glance card. fr255 only. -->
 <iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
     <iq:application
-        id="a9f48c4e9fdc447e9871de1a2d23c203"
+        id="8cea7f7b04a344649dd325fbec0d61fa"
         type="watch-app"
         name="@Strings.AppName"
-        entry="CoachCheckinApp"
+        entry="TileApp"
         launcherIcon="@Drawables.LauncherIcon"
         minApiLevel="3.1.0">
         <iq:products>
             <iq:product id="fr255"/>
-            <iq:product id="fr255m"/>
-            <iq:product id="fr255s"/>
-            <iq:product id="fr255sm"/>
         </iq:products>
         <iq:permissions>
             <iq:uses-permission id="Communications"/>
-            <iq:uses-permission id="Background"/>
-            <iq:uses-permission id="UserProfile"/>
         </iq:permissions>
         <iq:languages>
             <iq:language>eng</iq:language>
